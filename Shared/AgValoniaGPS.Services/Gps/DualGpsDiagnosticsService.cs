@@ -6,14 +6,17 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
 {
     private readonly IGpsService _frontGpsService;
     private readonly IRearGpsReceiverService _rearGpsService;
+    private readonly IGuidanceGeometryService _geometryService;
     private readonly System.Timers.Timer _timer;
 
     public DualGpsDiagnosticsService(
         IGpsService frontGpsService,
-        IRearGpsReceiverService rearGpsService)
+        IRearGpsReceiverService rearGpsService,
+        IGuidanceGeometryService geometryService)
     {
         _frontGpsService = frontGpsService;
         _rearGpsService = rearGpsService;
+        _geometryService = geometryService;
 
         _timer = new System.Timers.Timer(1000);
         _timer.Elapsed += OnTimerElapsed;
@@ -40,7 +43,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         bool rearFix = _rearGpsService.HasFix;
         bool rearRecent = _rearGpsService.IsRecent;
 
-        double distanceMeters = DistanceMeters(
+        double distanceMeters = _geometryService.DistanceMetersLatLon(
             front.CurrentPosition.Latitude,
             front.CurrentPosition.Longitude,
             rear.Latitude,
@@ -51,30 +54,6 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
             $"dist={distanceMeters:F2}m, " +
             $"front=({front.CurrentPosition.Latitude:F8},{front.CurrentPosition.Longitude:F8}), " +
             $"rear=({rear.Latitude:F8},{rear.Longitude:F8})");
-    }
-
-    private static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double earthRadiusMeters = 6371000.0;
-
-        double phi1 = DegreesToRadians(lat1);
-        double phi2 = DegreesToRadians(lat2);
-        double deltaPhi = DegreesToRadians(lat2 - lat1);
-        double deltaLambda = DegreesToRadians(lon2 - lon1);
-
-        double a =
-            Math.Sin(deltaPhi / 2.0) * Math.Sin(deltaPhi / 2.0) +
-            Math.Cos(phi1) * Math.Cos(phi2) *
-            Math.Sin(deltaLambda / 2.0) * Math.Sin(deltaLambda / 2.0);
-
-        double c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0 - a));
-
-        return earthRadiusMeters * c;
-    }
-
-    private static double DegreesToRadians(double degrees)
-    {
-        return degrees * Math.PI / 180.0;
     }
 
     public void Dispose()

@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
         services.AddSingleton<IRearGpsReceiverService, RearGpsReceiverService>();
         services.AddSingleton<IDualGpsDiagnosticsService, DualGpsDiagnosticsService>();
+        services.AddSingleton<IGuidanceGeometryService, GuidanceGeometryService>();
 
         // Other services
         services.AddSingleton<IFieldService, FieldService>();
