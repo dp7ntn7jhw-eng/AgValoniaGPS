@@ -28,14 +28,27 @@ IPAddress gatewayIp(192, 168, 1, 1);
 IPAddress subnetMask(255, 255, 255, 0);
 
 EthernetUDP udp;
+
+// IP du PC AgValoniaGPS qui recevra les retours STM32.
+// A adapter plus tard a l'adresse reelle du Mac/PC sur le reseau Ethernet.
+IPAddress statusTargetIp(192, 168, 1, 50);
+static constexpr uint16_t STATUS_UDP_PORT = 12001;
+
 ActuatorController actuator;
 
 char packetBuffer[256];
+char statusBuffer[256];
 
 uint16_t lastSeq = 0;
 bool hasLastSeq = false;
 uint32_t lastCommandReceivedMs = 0;
 bool timeoutReported = false;
+
+bool lastCommandAccepted = false;
+bool lastCommandValid = false;
+int32_t lastXteMm = 0;
+int32_t lastSteerCdeg = 0;
+uint16_t statusSeq = 0;
 
 static bool validateCommand(const RearCommand& cmd, char* reason, size_t reasonSize)
 {
@@ -151,6 +164,11 @@ static void handlePacket(int packetSize)
     char reason[80];
     bool accepted = validateCommand(parseResult.command, reason, sizeof(reason));
 
+    lastCommandValid = parseResult.command.valid;
+    lastCommandAccepted = accepted;
+    lastXteMm = parseResult.command.xteMm;
+    lastSteerCdeg = parseResult.command.steerCdeg;
+
     printCommand(parseResult.command, accepted, reason, missedFrames);
 
     if (accepted)
@@ -171,12 +189,59 @@ static void checkTimeout()
     if (age > COMMAND_TIMEOUT_MS && !timeoutReported)
     {
         actuator.setEnabled(false);
+        lastCommandAccepted = false;
 
         Serial.print("TIMEOUT no rear command for ");
         Serial.print(age);
         Serial.println(" ms -> command disabled");
         timeoutReported = true;
     }
+}
+
+static uint16_t computeAsciiChecksum(const char* payload)
+{
+    uint16_t checksum = 0;
+
+    for (const char* p = payload; *p != '\0'; ++p)
+    {
+        checksum = static_cast<uint16_t>((checksum + static_cast<uint8_t>(*p)) & 0xFFFF);
+    }
+
+    return checksum;
+}
+
+static void sendRearStatus()
+{
+    uint16_t seq = statusSeq++;
+
+    snprintf(
+        statusBuffer,
+        sizeof(statusBuffer),
+        "REAR_STATUS,seq=%u,cmd_valid=%u,accepted=%u,xte_mm=%ld,steer_cdeg=%ld,target_adc=%d,feedback_adc=%d,pwm=%d,enabled=%u,timeout=%u",
+        seq,
+        lastCommandValid ? 1 : 0,
+        lastCommandAccepted ? 1 : 0,
+        static_cast<long>(lastXteMm),
+        static_cast<long>(lastSteerCdeg),
+        actuator.getTargetAdc(),
+        actuator.getFeedbackAdc(),
+        actuator.getLastPwm(),
+        actuator.isEnabled() ? 1 : 0,
+        timeoutReported ? 1 : 0);
+
+    uint16_t crc = computeAsciiChecksum(statusBuffer);
+
+    char finalMessage[320];
+    snprintf(
+        finalMessage,
+        sizeof(finalMessage),
+        "%s,crc=%04X",
+        statusBuffer,
+        crc);
+
+    udp.beginPacket(statusTargetIp, STATUS_UDP_PORT);
+    udp.write(reinterpret_cast<const uint8_t*>(finalMessage), strlen(finalMessage));
+    udp.endPacket();
 }
 
 void setup()
@@ -211,6 +276,8 @@ void setup()
 
 void loop()
 {
+    static uint32_t lastStatusMs = 0;
+
     int packetSize = udp.parsePacket();
     if (packetSize > 0)
     {
@@ -219,4 +286,11 @@ void loop()
 
     checkTimeout();
     actuator.update();
+
+    uint32_t now = millis();
+    if (now - lastStatusMs >= 500)
+    {
+        lastStatusMs = now;
+        sendRearStatus();
+    }
 }
