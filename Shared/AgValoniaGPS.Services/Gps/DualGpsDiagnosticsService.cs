@@ -12,6 +12,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
     private readonly IRearAxleGuidanceCommandService _rearCommandService;
     private readonly IRearAxleCommandPublisherService _rearCommandPublisherService;
     private readonly IRearAxleStatusReceiverService _rearStatusReceiverService;
+    private readonly IRearAxleRuntimeStateService _rearRuntimeStateService;
     private readonly IGpsPipelineService _gpsPipelineService;
     private readonly ApplicationState _appState;
     private readonly System.Timers.Timer _timer;
@@ -23,6 +24,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         IRearAxleGuidanceCommandService rearCommandService,
         IRearAxleCommandPublisherService rearCommandPublisherService,
         IRearAxleStatusReceiverService rearStatusReceiverService,
+        IRearAxleRuntimeStateService rearRuntimeStateService,
         IGpsPipelineService gpsPipelineService,
         ApplicationState appState)
     {
@@ -32,6 +34,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         _rearCommandService = rearCommandService;
         _rearCommandPublisherService = rearCommandPublisherService;
         _rearStatusReceiverService = rearStatusReceiverService;
+        _rearRuntimeStateService = rearRuntimeStateService;
         _gpsPipelineService = gpsPipelineService;
         _appState = appState;
 
@@ -91,6 +94,14 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         var rearStatus = _rearStatusReceiverService.LastStatus;
         bool rearStatusRecent = _rearStatusReceiverService.IsRecent;
 
+        _rearRuntimeStateService.Update(
+            rearDiagnostic,
+            rearCommand,
+            rearStatus,
+            rearStatusRecent);
+
+        var runtime = _rearRuntimeStateService.Current;
+
         string rearStatusText = rearStatus == null
             ? "stm32Status=n/a"
             : $"stm32Recent={rearStatusRecent}, " +
@@ -98,7 +109,9 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
               $"stm32FeedbackAdc={rearStatus.FeedbackAdc}, " +
               $"stm32TargetAdc={rearStatus.TargetAdc}, " +
               $"stm32Pwm={rearStatus.Pwm}, " +
-              $"stm32Timeout={rearStatus.Timeout}";
+              $"stm32Timeout={rearStatus.Timeout}, " +
+              $"rearOverallReady={runtime.OverallReady}, " +
+              $"rearReason={runtime.Reason}";
 
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +

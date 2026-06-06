@@ -74,6 +74,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRearAxleGuidanceCommandService, RearAxleGuidanceCommandService>();
         services.AddSingleton<IRearAxleCommandPublisherService, RearAxleCommandPublisherService>();
         services.AddSingleton<IRearAxleStatusReceiverService, RearAxleStatusReceiverService>();
+        services.AddSingleton<IRearAxleRuntimeStateService, RearAxleRuntimeStateService>();
 
         // Other services
         services.AddSingleton<IFieldService, FieldService>();
