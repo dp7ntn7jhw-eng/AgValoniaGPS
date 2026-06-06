@@ -176,7 +176,7 @@ public sealed class RearGpsReceiverService : IRearGpsReceiverService
     private void LogRearGpsThrottled()
     {
         var now = DateTime.UtcNow;
-        if ((now - _lastConsoleLogUtc).TotalSeconds < 1.0)
+        if ((now - _lastConsoleLogUtc).TotalSeconds < 5.0)
         {
             return;
         }

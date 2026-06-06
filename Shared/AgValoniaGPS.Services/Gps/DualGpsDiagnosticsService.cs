@@ -38,7 +38,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         _gpsPipelineService = gpsPipelineService;
         _appState = appState;
 
-        _timer = new System.Timers.Timer(1000);
+        _timer = new System.Timers.Timer(5000);
         _timer.Elapsed += OnTimerElapsed;
         _timer.AutoReset = true;
     }

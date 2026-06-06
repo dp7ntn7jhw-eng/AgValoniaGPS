@@ -300,7 +300,7 @@ public sealed class RearAxleStatusReceiverService : IRearAxleStatusReceiverServi
     private void LogStatusThrottled(RearAxleStatus status)
     {
         var now = DateTime.UtcNow;
-        if ((now - _lastConsoleLogUtc).TotalSeconds < 1.0)
+        if ((now - _lastConsoleLogUtc).TotalSeconds < 5.0)
         {
             return;
         }
