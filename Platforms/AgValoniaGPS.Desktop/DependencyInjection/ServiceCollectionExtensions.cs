@@ -73,6 +73,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGuidanceGeometryService, GuidanceGeometryService>();
         services.AddSingleton<IRearAxleGuidanceCommandService, RearAxleGuidanceCommandService>();
         services.AddSingleton<IRearAxleCommandPublisherService, RearAxleCommandPublisherService>();
+        services.AddSingleton<IRearAxleStatusReceiverService, RearAxleStatusReceiverService>();
 
         // Other services
         services.AddSingleton<IFieldService, FieldService>();
@@ -200,5 +201,8 @@ public static class ServiceCollectionExtensions
 
         var dualGpsDiagnostics = serviceProvider.GetRequiredService<IDualGpsDiagnosticsService>();
         dualGpsDiagnostics.Start();
+
+        var rearStatusReceiver = serviceProvider.GetRequiredService<IRearAxleStatusReceiverService>();
+        rearStatusReceiver.Start();
     }
 }
