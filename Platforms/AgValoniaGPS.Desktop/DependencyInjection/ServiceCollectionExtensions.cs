@@ -68,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDisplaySettingsService, DisplaySettingsService>();
         services.AddSingleton<IFieldStatisticsService, FieldStatisticsService>();
         services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
+        services.AddSingleton<IRearGpsReceiverService, RearGpsReceiverService>();
 
         // Other services
         services.AddSingleton<IFieldService, FieldService>();
@@ -189,5 +190,8 @@ public static class ServiceCollectionExtensions
         var autoSteerService = serviceProvider.GetRequiredService<IAutoSteerService>();
 
         udpService?.SetAutoSteerService(autoSteerService);
+
+        var rearGpsReceiver = serviceProvider.GetRequiredService<IRearGpsReceiverService>();
+        rearGpsReceiver.Start();
     }
 }
