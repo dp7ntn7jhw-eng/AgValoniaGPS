@@ -96,4 +96,16 @@ public interface IGpsPipelineService
 
     /// <summary>Latest simulator steer angle (from guidance).</summary>
     double SimulatorSteerAngle { get; }
+
+    /// <summary>Currently active guidance track, if any.</summary>
+    Models.Track.Track? CurrentActiveTrack { get; }
+
+    /// <summary>Current pass number relative to the active track.</summary>
+    int CurrentPassNumber { get; }
+
+    /// <summary>Current nudge offset in meters.</summary>
+    double CurrentNudgeOffset { get; }
+
+    /// <summary>Whether a valid active track is available.</summary>
+    bool HasActiveTrack { get; }
 }

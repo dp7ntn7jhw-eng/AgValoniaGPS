@@ -333,6 +333,50 @@ public sealed class GpsPipelineService : IGpsPipelineService
     public bool IsAutoSteerEngaged { get { lock (_stateLock) return _autoSteerEngaged; } }
     public double SimulatorSteerAngle => Volatile.Read(ref _simulatorSteerAngle);
 
+    public Models.Track.Track? CurrentActiveTrack
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _activeTrack;
+            }
+        }
+    }
+
+    public int CurrentPassNumber
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _guidanceWorking.HowManyPathsAway;
+            }
+        }
+    }
+
+    public double CurrentNudgeOffset
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _guidanceWorking.NudgeOffset;
+            }
+        }
+    }
+
+    public bool HasActiveTrack
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _activeTrack != null && _activeTrack.Points.Count >= 2;
+            }
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // GPS event handler
     // ══════════════════════════════════════════════════════════════════════

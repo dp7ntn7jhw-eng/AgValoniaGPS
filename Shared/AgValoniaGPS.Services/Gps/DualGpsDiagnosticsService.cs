@@ -1,4 +1,6 @@
 using AgValoniaGPS.Services.Interfaces;
+using AgValoniaGPS.Models.Base;
+using AgValoniaGPS.Models.State;
 
 namespace AgValoniaGPS.Services.Gps;
 
@@ -7,16 +9,22 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
     private readonly IGpsService _frontGpsService;
     private readonly IRearGpsReceiverService _rearGpsService;
     private readonly IGuidanceGeometryService _geometryService;
+    private readonly IGpsPipelineService _gpsPipelineService;
+    private readonly ApplicationState _appState;
     private readonly System.Timers.Timer _timer;
 
     public DualGpsDiagnosticsService(
         IGpsService frontGpsService,
         IRearGpsReceiverService rearGpsService,
-        IGuidanceGeometryService geometryService)
+        IGuidanceGeometryService geometryService,
+        IGpsPipelineService gpsPipelineService,
+        ApplicationState appState)
     {
         _frontGpsService = frontGpsService;
         _rearGpsService = rearGpsService;
         _geometryService = geometryService;
+        _gpsPipelineService = gpsPipelineService;
+        _appState = appState;
 
         _timer = new System.Timers.Timer(1000);
         _timer.Elapsed += OnTimerElapsed;
@@ -63,11 +71,39 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
             lineB.Latitude,
             lineB.Longitude);
 
+        string rearTrackDiagnostic = BuildRearTrackDiagnostic(rear);
+
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +
             $"dist={distanceMeters:F2}m, rearXteTemp={rearCrossTrackErrorMeters:F2}m, " +
+            $"{rearTrackDiagnostic}, " +
             $"front=({frontLat:F8},{frontLon:F8}), " +
             $"rear=({rear.Latitude:F8},{rear.Longitude:F8})");
+    }
+
+    private string BuildRearTrackDiagnostic(AgValoniaGPS.Models.VehicleState rear)
+    {
+        var track = _gpsPipelineService.CurrentActiveTrack;
+        var localPlane = _appState.Field.LocalPlane;
+
+        if (track == null || track.Points.Count < 2 || localPlane == null)
+        {
+            return "rearXteTrack=n/a";
+        }
+
+        var rearGeo = localPlane.ConvertWgs84ToGeoCoord(
+            new AgValoniaGPS.Models.Wgs84(rear.Latitude, rear.Longitude));
+
+        var rearPoint = new Vec2(rearGeo.Easting, rearGeo.Northing);
+        var pointA = new Vec2(track.Points[0].Easting, track.Points[0].Northing);
+        var pointB = new Vec2(track.Points[1].Easting, track.Points[1].Northing);
+
+        double rearXteTrack = _geometryService.CrossTrackErrorMeters(
+            rearPoint,
+            pointA,
+            pointB);
+
+        return $"rearXteTrack={rearXteTrack:F2}m";
     }
 
     private static (double Latitude, double Longitude) OffsetLatLon(
