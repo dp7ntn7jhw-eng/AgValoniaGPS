@@ -8,7 +8,7 @@ namespace AgValoniaGPS.Services.Gps;
 
 public sealed class RearAxleCommandPublisherService : IRearAxleCommandPublisherService, IDisposable
 {
-    private const string TargetIp = "127.0.0.1";
+    private const string TargetIp = "192.168.1.62";
     private const int TargetPort = 12000;
 
     private readonly UdpClient _udpClient = new();
