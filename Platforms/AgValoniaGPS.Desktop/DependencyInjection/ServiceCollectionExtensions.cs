@@ -69,6 +69,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFieldStatisticsService, FieldStatisticsService>();
         services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
         services.AddSingleton<IRearGpsReceiverService, RearGpsReceiverService>();
+        services.AddSingleton<IDualGpsDiagnosticsService, DualGpsDiagnosticsService>();
 
         // Other services
         services.AddSingleton<IFieldService, FieldService>();
@@ -193,5 +194,8 @@ public static class ServiceCollectionExtensions
 
         var rearGpsReceiver = serviceProvider.GetRequiredService<IRearGpsReceiverService>();
         rearGpsReceiver.Start();
+
+        var dualGpsDiagnostics = serviceProvider.GetRequiredService<IDualGpsDiagnosticsService>();
+        dualGpsDiagnostics.Start();
     }
 }
