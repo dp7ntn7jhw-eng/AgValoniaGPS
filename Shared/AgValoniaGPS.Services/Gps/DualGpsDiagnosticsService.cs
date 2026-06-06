@@ -9,6 +9,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
     private readonly IGpsService _frontGpsService;
     private readonly IRearGpsReceiverService _rearGpsService;
     private readonly IGuidanceGeometryService _geometryService;
+    private readonly IRearAxleGuidanceCommandService _rearCommandService;
     private readonly IGpsPipelineService _gpsPipelineService;
     private readonly ApplicationState _appState;
     private readonly System.Timers.Timer _timer;
@@ -17,12 +18,14 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         IGpsService frontGpsService,
         IRearGpsReceiverService rearGpsService,
         IGuidanceGeometryService geometryService,
+        IRearAxleGuidanceCommandService rearCommandService,
         IGpsPipelineService gpsPipelineService,
         ApplicationState appState)
     {
         _frontGpsService = frontGpsService;
         _rearGpsService = rearGpsService;
         _geometryService = geometryService;
+        _rearCommandService = rearCommandService;
         _gpsPipelineService = gpsPipelineService;
         _appState = appState;
 
@@ -76,13 +79,18 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
             distanceMeters,
             rearCrossTrackErrorMeters);
 
+        var rearCommand = _rearCommandService.ComputeCommand(rearDiagnostic);
+
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +
             $"dist={rearDiagnostic.RearDistanceToFrontMeters:F2}m, " +
             $"rearXteTemp={FormatMetersOrNa(rearDiagnostic.RearTemporaryCrossTrackErrorMeters)}, " +
             $"rearXteTrack={FormatMetersOrNa(rearDiagnostic.RearCrossTrackErrorMeters)}, " +
             $"rearValid={rearDiagnostic.IsValid}, " +
+            $"rearCmdValid={rearCommand.IsCommandValid}, " +
+            $"rearSteerCmd={rearCommand.TargetSteerAngleDegrees:F2}deg, " +
             $"track={rearDiagnostic.ActiveTrackName}, " +
+            $"reason={rearCommand.ReasonIfInvalid}, " +
             $"front=({frontLat:F8},{frontLon:F8}), " +
             $"rear=({rear.Latitude:F8},{rear.Longitude:F8})");
     }

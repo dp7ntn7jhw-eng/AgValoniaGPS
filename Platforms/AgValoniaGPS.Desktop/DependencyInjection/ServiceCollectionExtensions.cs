@@ -71,6 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRearGpsReceiverService, RearGpsReceiverService>();
         services.AddSingleton<IDualGpsDiagnosticsService, DualGpsDiagnosticsService>();
         services.AddSingleton<IGuidanceGeometryService, GuidanceGeometryService>();
+        services.AddSingleton<IRearAxleGuidanceCommandService, RearAxleGuidanceCommandService>();
 
         // Other services
         services.AddSingleton<IFieldService, FieldService>();
