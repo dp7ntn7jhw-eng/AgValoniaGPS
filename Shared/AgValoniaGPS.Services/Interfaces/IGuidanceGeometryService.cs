@@ -12,6 +12,14 @@ public interface IGuidanceGeometryService
 
     double CrossTrackErrorMeters(Vec2 point, Vec2 lineA, Vec2 lineB);
 
+    double CrossTrackErrorMetersLatLon(
+        double pointLat,
+        double pointLon,
+        double lineALat,
+        double lineALon,
+        double lineBLat,
+        double lineBLon);
+
     double AlongTrackDistanceMeters(Vec2 point, Vec2 lineA, Vec2 lineB);
 
     Vec2 ClosestPointOnLine(Vec2 point, Vec2 lineA, Vec2 lineB);

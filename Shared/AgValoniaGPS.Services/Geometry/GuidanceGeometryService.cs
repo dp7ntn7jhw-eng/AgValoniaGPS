@@ -38,6 +38,21 @@ public sealed class GuidanceGeometryService : IGuidanceGeometryService
         return Math.Atan2(dx, dz);
     }
 
+    private static Vec2 ProjectLatLonToLocalMeters(
+        double lat,
+        double lon,
+        double originLat,
+        double originLon)
+    {
+        const double earthRadiusMeters = 6371000.0;
+
+        double originLatRad = DegreesToRadians(originLat);
+        double east = DegreesToRadians(lon - originLon) * earthRadiusMeters * Math.Cos(originLatRad);
+        double north = DegreesToRadians(lat - originLat) * earthRadiusMeters;
+
+        return new Vec2(east, north);
+    }
+
     private static double DegreesToRadians(double degrees)
     {
         return degrees * Math.PI / 180.0;
@@ -57,6 +72,21 @@ public sealed class GuidanceGeometryService : IGuidanceGeometryService
         // Same sign convention as TrackGuidanceService:
         // positive and negative indicate opposite sides of the guidance line.
         return ((point.Easting - lineA.Easting) * dz - (point.Northing - lineA.Northing) * dx) / length;
+    }
+
+    public double CrossTrackErrorMetersLatLon(
+        double pointLat,
+        double pointLon,
+        double lineALat,
+        double lineALon,
+        double lineBLat,
+        double lineBLon)
+    {
+        var point = ProjectLatLonToLocalMeters(pointLat, pointLon, lineALat, lineALon);
+        var lineA = new Vec2(0.0, 0.0);
+        var lineB = ProjectLatLonToLocalMeters(lineBLat, lineBLon, lineALat, lineALon);
+
+        return CrossTrackErrorMeters(point, lineA, lineB);
     }
 
     public double AlongTrackDistanceMeters(Vec2 point, Vec2 lineA, Vec2 lineB)

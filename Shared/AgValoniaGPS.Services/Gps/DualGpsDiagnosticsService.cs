@@ -43,17 +43,51 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         bool rearFix = _rearGpsService.HasFix;
         bool rearRecent = _rearGpsService.IsRecent;
 
+        double frontLat = front.CurrentPosition.Latitude;
+        double frontLon = front.CurrentPosition.Longitude;
+        double frontHeading = front.CurrentPosition.Heading;
+
         double distanceMeters = _geometryService.DistanceMetersLatLon(
-            front.CurrentPosition.Latitude,
-            front.CurrentPosition.Longitude,
+            frontLat,
+            frontLon,
             rear.Latitude,
             rear.Longitude);
 
+        var lineB = OffsetLatLon(frontLat, frontLon, frontHeading, 100.0);
+
+        double rearCrossTrackErrorMeters = _geometryService.CrossTrackErrorMetersLatLon(
+            rear.Latitude,
+            rear.Longitude,
+            frontLat,
+            frontLon,
+            lineB.Latitude,
+            lineB.Longitude);
+
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +
-            $"dist={distanceMeters:F2}m, " +
-            $"front=({front.CurrentPosition.Latitude:F8},{front.CurrentPosition.Longitude:F8}), " +
+            $"dist={distanceMeters:F2}m, rearXteTemp={rearCrossTrackErrorMeters:F2}m, " +
+            $"front=({frontLat:F8},{frontLon:F8}), " +
             $"rear=({rear.Latitude:F8},{rear.Longitude:F8})");
+    }
+
+    private static (double Latitude, double Longitude) OffsetLatLon(
+        double latitude,
+        double longitude,
+        double headingDegrees,
+        double distanceMeters)
+    {
+        const double earthRadiusMeters = 6371000.0;
+
+        double headingRad = headingDegrees * Math.PI / 180.0;
+        double latRad = latitude * Math.PI / 180.0;
+
+        double northMeters = Math.Cos(headingRad) * distanceMeters;
+        double eastMeters = Math.Sin(headingRad) * distanceMeters;
+
+        double newLat = latitude + (northMeters / earthRadiusMeters) * 180.0 / Math.PI;
+        double newLon = longitude + (eastMeters / (earthRadiusMeters * Math.Cos(latRad))) * 180.0 / Math.PI;
+
+        return (newLat, newLon);
     }
 
     public void Dispose()
