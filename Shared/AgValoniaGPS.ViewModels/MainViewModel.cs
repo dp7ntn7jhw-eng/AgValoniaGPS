@@ -357,6 +357,7 @@ public partial class MainViewModel : ObservableObject
             Dispatcher.UIThread.Post(() =>
             {
                 OnPropertyChanged(nameof(RearAxleStatusStripLine));
+                OnPropertyChanged(nameof(RearAxleDiagnosticPanelText));
                 RaiseStatusStripChanged();
             });
         };
