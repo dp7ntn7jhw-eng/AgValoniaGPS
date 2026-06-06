@@ -1,9 +1,60 @@
 using System.Globalization;
+using AgValoniaGPS.Models.Base;
 
 namespace AgValoniaGPS.ViewModels;
 
 public partial class MainViewModel
 {
+    public string FrontAxleDiagnosticPanelText
+    {
+        get
+        {
+            try
+            {
+                var gps = _gpsService.CurrentData;
+                var position = gps.CurrentPosition;
+
+                bool frontGpsOk = _gpsService.IsConnected && _gpsService.IsGpsDataOk();
+                bool trackOk = _gpsPipelineService.HasActiveTrack;
+
+                if (!frontGpsOk)
+                {
+                    return "Front NOT READY | GPS not OK";
+                }
+
+                if (!trackOk)
+                {
+                    return "Front NOT READY | no active track";
+                }
+
+                var track = _gpsPipelineService.CurrentActiveTrack;
+                if (track == null || track.Points.Count < 2)
+                {
+                    return "Front NOT READY | invalid track";
+                }
+
+                var frontPoint = new Vec2(position.Easting, position.Northing);
+                var pointA = new Vec2(track.Points[0].Easting, track.Points[0].Northing);
+                var pointB = new Vec2(track.Points[1].Easting, track.Points[1].Northing);
+
+                double frontXte = _guidanceGeometryService.CrossTrackErrorMeters(
+                    frontPoint,
+                    pointA,
+                    pointB);
+
+                string xte = $"{frontXte * 100.0:+0;-0;0} cm";
+
+                return string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Front READY | XTE {xte} | Cmd n/a | GPS OK");
+            }
+            catch (Exception ex)
+            {
+                return $"Front NOT READY | {ex.Message}";
+            }
+        }
+    }
+
     public string RearAxleDiagnosticPanelText
     {
         get
@@ -12,12 +63,12 @@ public partial class MainViewModel
 
             if (state.UpdatedUtc == DateTime.MinValue)
             {
-                return "No rear axle data";
+                return "Rear  NOT READY | no rear axle data";
             }
 
             if (!state.OverallReady)
             {
-                return $"NOT READY | {state.Reason}";
+                return $"Rear  NOT READY | {state.Reason}";
             }
 
             string xte = state.RearCrossTrackErrorMeters.HasValue
@@ -26,7 +77,7 @@ public partial class MainViewModel
 
             return string.Create(
                 CultureInfo.InvariantCulture,
-                $"READY | XTE {xte} | Cmd {state.RearSteerCommandDegrees:F2}° | " +
+                $"Rear  READY | XTE {xte} | Cmd {state.RearSteerCommandDegrees:F2}° | " +
                 $"STM32 OK | ADC {state.Stm32FeedbackAdc}/{state.Stm32TargetAdc} | PWM {state.Stm32Pwm}");
         }
     }

@@ -6,7 +6,7 @@
     x:DataType="vm:MainViewModel">
 
     <Border
-        MinWidth="330"
+        MinWidth="430"
         Padding="10,5"
         Margin="10,0,0,0"
         CornerRadius="8"
@@ -17,10 +17,17 @@
 
         <StackPanel Spacing="2">
             <TextBlock
-                Text="Rear axle"
+                Text="Axles"
                 FontSize="11"
                 FontWeight="Bold"
                 Foreground="{DynamicResource SystemControlForegroundBaseMediumHighBrush}"/>
+
+            <TextBlock
+                Text="{Binding FrontAxleDiagnosticPanelText}"
+                FontSize="12"
+                FontWeight="SemiBold"
+                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                TextWrapping="NoWrap"/>
 
             <TextBlock
                 Text="{Binding RearAxleDiagnosticPanelText}"
