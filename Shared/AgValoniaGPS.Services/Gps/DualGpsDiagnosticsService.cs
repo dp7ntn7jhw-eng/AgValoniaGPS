@@ -86,9 +86,19 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         var track = _gpsPipelineService.CurrentActiveTrack;
         var localPlane = _appState.Field.LocalPlane;
 
-        if (track == null || track.Points.Count < 2 || localPlane == null)
+        if (track == null)
         {
-            return "rearXteTrack=n/a";
+            return "rearXteTrack=n/a(track=null)";
+        }
+
+        if (track.Points.Count < 2)
+        {
+            return $"rearXteTrack=n/a(points={track.Points.Count})";
+        }
+
+        if (localPlane == null)
+        {
+            return "rearXteTrack=n/a(localPlane=null)";
         }
 
         var rearGeo = localPlane.ConvertWgs84ToGeoCoord(
