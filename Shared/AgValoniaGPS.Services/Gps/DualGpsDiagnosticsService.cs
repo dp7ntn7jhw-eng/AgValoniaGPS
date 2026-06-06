@@ -10,6 +10,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
     private readonly IRearGpsReceiverService _rearGpsService;
     private readonly IGuidanceGeometryService _geometryService;
     private readonly IRearAxleGuidanceCommandService _rearCommandService;
+    private readonly IRearAxleCommandPublisherService _rearCommandPublisherService;
     private readonly IGpsPipelineService _gpsPipelineService;
     private readonly ApplicationState _appState;
     private readonly System.Timers.Timer _timer;
@@ -19,6 +20,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         IRearGpsReceiverService rearGpsService,
         IGuidanceGeometryService geometryService,
         IRearAxleGuidanceCommandService rearCommandService,
+        IRearAxleCommandPublisherService rearCommandPublisherService,
         IGpsPipelineService gpsPipelineService,
         ApplicationState appState)
     {
@@ -26,6 +28,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         _rearGpsService = rearGpsService;
         _geometryService = geometryService;
         _rearCommandService = rearCommandService;
+        _rearCommandPublisherService = rearCommandPublisherService;
         _gpsPipelineService = gpsPipelineService;
         _appState = appState;
 
@@ -80,6 +83,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
             rearCrossTrackErrorMeters);
 
         var rearCommand = _rearCommandService.ComputeCommand(rearDiagnostic);
+        _rearCommandPublisherService.Publish(rearDiagnostic, rearCommand);
 
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +
