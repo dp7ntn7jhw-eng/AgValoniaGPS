@@ -245,6 +245,25 @@ public class AutoSteerService : IAutoSteerService
     /// </summary>
     private void OnUdpDataReceived(object? sender, UdpDataReceivedEventArgs e)
     {
+        // Raw NMEA sentences received through UDP are exposed with PGN 0.
+        // Forward them to the GPS parser so an external simulator or receiver
+        // can drive the application without using the internal simulator.
+        if (e.PGN == 0 && e.Data.Length > 0 && e.Data[0] == (byte)'$')
+        {
+            int nmeaLength = Array.IndexOf(e.Data, (byte)'\n');
+            if (nmeaLength >= 0)
+            {
+                nmeaLength += 1;
+            }
+            else
+            {
+                nmeaLength = e.Data.Length;
+            }
+
+            ProcessGpsBuffer(e.Data, nmeaLength);
+            return;
+        }
+
         switch (e.PGN)
         {
             case PgnNumbers.AUTOSTEER_DATA: // 253 - Steer Data from module

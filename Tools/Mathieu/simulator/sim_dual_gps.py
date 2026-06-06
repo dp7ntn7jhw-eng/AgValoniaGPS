@@ -75,6 +75,53 @@ def make_gga(lat, lon, fix_quality=4, sats=12, altitude_m=250.0):
     return f"${body}*{nmea_checksum(body)}\r\n"
 
 
+def make_vtg(heading_deg, speed_m_s):
+    speed_kmh = speed_m_s * 3.6
+    speed_knots = speed_kmh / 1.852
+
+    body = (
+        f"GPVTG,"
+        f"{heading_deg:.1f},T,"
+        f"{heading_deg:.1f},M,"
+        f"{speed_knots:.2f},N,"
+        f"{speed_kmh:.2f},K,"
+        f"A"
+    )
+
+    return f"${body}*{nmea_checksum(body)}\r\n"
+
+
+def make_panda(lat, lon, heading_deg, speed_m_s, fix_quality=4, sats=12,
+               hdop=0.8, altitude_m=250.0, differential_age=0.0,
+               roll_deg=0.0, pitch_deg=0.0, yaw_rate_deg_s=0.0):
+    now = datetime.now(timezone.utc)
+    utc_time = now.strftime("%H%M%S") + ".00"
+
+    nmea_lat, lat_dir = decimal_to_nmea_lat(lat)
+    nmea_lon, lon_dir = decimal_to_nmea_lon(lon)
+
+    speed_kmh = speed_m_s * 3.6
+    speed_knots = speed_kmh / 1.852
+
+    heading_tenths = int(round(heading_deg * 10.0))
+    roll_tenths = int(round(roll_deg * 10.0))
+
+    body = (
+        f"PANDA,{utc_time},"
+        f"{nmea_lat},{lat_dir},"
+        f"{nmea_lon},{lon_dir},"
+        f"{fix_quality},{sats},{hdop:.1f},"
+        f"{altitude_m:.1f},{differential_age:.1f},"
+        f"{speed_knots:.2f},"
+        f"{heading_tenths},"
+        f"{roll_tenths},"
+        f"{pitch_deg:.2f},"
+        f"{yaw_rate_deg_s:.2f}"
+    )
+
+    return f"${body}*{nmea_checksum(body)}\r\n"
+
+
 def offset_position(lat, lon, along_m, lateral_m, heading_deg):
     heading = math.radians(heading_deg)
 
@@ -123,11 +170,11 @@ def main():
             HEADING_DEG,
         )
 
-        front_gga = make_gga(front_lat, front_lon)
-        rear_gga = make_gga(rear_lat, rear_lon)
+        front_panda = make_panda(front_lat, front_lon, HEADING_DEG, SPEED_M_S)
+        rear_panda = make_panda(rear_lat, rear_lon, HEADING_DEG, SPEED_M_S)
 
-        sock.sendto(front_gga.encode("ascii"), (AOG_IP, GPS_FRONT_PORT))
-        sock.sendto(rear_gga.encode("ascii"), (AOG_IP, GPS_REAR_PORT))
+        sock.sendto(front_panda.encode("ascii"), (AOG_IP, GPS_FRONT_PORT))
+        sock.sendto(rear_panda.encode("ascii"), (AOG_IP, GPS_REAR_PORT))
 
         print(
             f"t={elapsed_s:6.1f}s | "
