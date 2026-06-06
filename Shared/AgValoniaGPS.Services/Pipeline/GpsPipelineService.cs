@@ -249,11 +249,6 @@ public sealed class GpsPipelineService : IGpsPipelineService
 
     public void SetActiveTrack(Models.Track.Track? track, int passNumber, double nudgeOffset, bool isOnBoundary)
     {
-        Console.WriteLine(
-            $"[DualAxle] SetActiveTrack: track={(track == null ? "null" : "ok")} " +
-            $"points={track?.Points.Count ?? 0} pass={passNumber} " +
-            $"nudge={nudgeOffset:F2} boundary={isOnBoundary}");
-
         lock (_stateLock)
         {
             _activeTrack = track;

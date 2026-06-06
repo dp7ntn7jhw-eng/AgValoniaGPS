@@ -71,49 +71,78 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
             lineB.Latitude,
             lineB.Longitude);
 
-        string rearTrackDiagnostic = BuildRearTrackDiagnostic(rear);
+        var rearDiagnostic = BuildRearAxleGuidanceDiagnostic(
+            rear,
+            distanceMeters,
+            rearCrossTrackErrorMeters);
 
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +
-            $"dist={distanceMeters:F2}m, rearXteTemp={rearCrossTrackErrorMeters:F2}m, " +
-            $"{rearTrackDiagnostic}, " +
+            $"dist={rearDiagnostic.RearDistanceToFrontMeters:F2}m, " +
+            $"rearXteTemp={FormatMetersOrNa(rearDiagnostic.RearTemporaryCrossTrackErrorMeters)}, " +
+            $"rearXteTrack={FormatMetersOrNa(rearDiagnostic.RearCrossTrackErrorMeters)}, " +
+            $"rearValid={rearDiagnostic.IsValid}, " +
+            $"track={rearDiagnostic.ActiveTrackName}, " +
             $"front=({frontLat:F8},{frontLon:F8}), " +
             $"rear=({rear.Latitude:F8},{rear.Longitude:F8})");
     }
 
-    private string BuildRearTrackDiagnostic(AgValoniaGPS.Models.VehicleState rear)
+    private RearAxleGuidanceDiagnostic BuildRearAxleGuidanceDiagnostic(
+        AgValoniaGPS.Models.VehicleState rear,
+        double rearDistanceToFrontMeters,
+        double rearTemporaryCrossTrackErrorMeters)
     {
         var track = _gpsPipelineService.CurrentActiveTrack;
         var localPlane = _appState.Field.LocalPlane;
 
-        if (track == null)
+        bool rearGpsFixOk = _rearGpsService.HasFix;
+        bool rearGpsRecent = _rearGpsService.IsRecent;
+        bool activeTrackAvailable =
+            track != null &&
+            track.Points.Count >= 2 &&
+            localPlane != null;
+
+        string activeTrackName = track?.Name ?? "n/a";
+        int activeTrackPointCount = track?.Points.Count ?? 0;
+
+        double? rearCrossTrackErrorMeters = null;
+
+        if (activeTrackAvailable && track != null && localPlane != null)
         {
-            return "rearXteTrack=n/a(track=null)";
+            var rearGeo = localPlane.ConvertWgs84ToGeoCoord(
+                new AgValoniaGPS.Models.Wgs84(rear.Latitude, rear.Longitude));
+
+            var rearPoint = new Vec2(rearGeo.Easting, rearGeo.Northing);
+            var pointA = new Vec2(track.Points[0].Easting, track.Points[0].Northing);
+            var pointB = new Vec2(track.Points[1].Easting, track.Points[1].Northing);
+
+            rearCrossTrackErrorMeters = _geometryService.CrossTrackErrorMeters(
+                rearPoint,
+                pointA,
+                pointB);
         }
 
-        if (track.Points.Count < 2)
-        {
-            return $"rearXteTrack=n/a(points={track.Points.Count})";
-        }
+        bool isValid =
+            rearGpsFixOk &&
+            rearGpsRecent &&
+            activeTrackAvailable &&
+            rearCrossTrackErrorMeters.HasValue;
 
-        if (localPlane == null)
-        {
-            return "rearXteTrack=n/a(localPlane=null)";
-        }
+        return new RearAxleGuidanceDiagnostic(
+            rearGpsFixOk,
+            rearGpsRecent,
+            activeTrackAvailable,
+            activeTrackName,
+            activeTrackPointCount,
+            rearDistanceToFrontMeters,
+            rearTemporaryCrossTrackErrorMeters,
+            rearCrossTrackErrorMeters,
+            isValid);
+    }
 
-        var rearGeo = localPlane.ConvertWgs84ToGeoCoord(
-            new AgValoniaGPS.Models.Wgs84(rear.Latitude, rear.Longitude));
-
-        var rearPoint = new Vec2(rearGeo.Easting, rearGeo.Northing);
-        var pointA = new Vec2(track.Points[0].Easting, track.Points[0].Northing);
-        var pointB = new Vec2(track.Points[1].Easting, track.Points[1].Northing);
-
-        double rearXteTrack = _geometryService.CrossTrackErrorMeters(
-            rearPoint,
-            pointA,
-            pointB);
-
-        return $"rearXteTrack={rearXteTrack:F2}m";
+    private static string FormatMetersOrNa(double? value)
+    {
+        return value.HasValue ? $"{value.Value:F2}m" : "n/a";
     }
 
     private static (double Latitude, double Longitude) OffsetLatLon(
