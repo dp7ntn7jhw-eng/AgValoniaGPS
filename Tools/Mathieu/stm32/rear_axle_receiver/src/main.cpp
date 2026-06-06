@@ -3,6 +3,7 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 #include "RearCommandProtocol.h"
+#include "ActuatorController.h"
 
 #ifndef REAR_CMD_UDP_PORT
 #define REAR_CMD_UDP_PORT 12000
@@ -27,6 +28,7 @@ IPAddress gatewayIp(192, 168, 1, 1);
 IPAddress subnetMask(255, 255, 255, 0);
 
 EthernetUDP udp;
+ActuatorController actuator;
 
 char packetBuffer[256];
 
@@ -153,9 +155,8 @@ static void handlePacket(int packetSize)
 
     if (accepted)
     {
-        // Étape suivante :
-        // convertir steer_cdeg en consigne vérin/PID.
-        // Pour l'instant, on ne pilote aucun actionneur.
+        actuator.setEnabled(true);
+        actuator.setTargetSteerCdeg(parseResult.command.steerCdeg);
     }
 }
 
@@ -169,6 +170,8 @@ static void checkTimeout()
     uint32_t age = millis() - lastCommandReceivedMs;
     if (age > COMMAND_TIMEOUT_MS && !timeoutReported)
     {
+        actuator.setEnabled(false);
+
         Serial.print("TIMEOUT no rear command for ");
         Serial.print(age);
         Serial.println(" ms -> command disabled");
@@ -183,6 +186,9 @@ void setup()
 
     Serial.println();
     Serial.println("Rear axle STM32/W5500 receiver starting...");
+
+    actuator.begin();
+    actuator.setEnabled(false);
 
     Ethernet.init(W5500_CS_PIN);
     Ethernet.begin(mac, localIp, dnsIp, gatewayIp, subnetMask);
@@ -212,4 +218,5 @@ void loop()
     }
 
     checkTimeout();
+    actuator.update();
 }
