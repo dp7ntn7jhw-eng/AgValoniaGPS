@@ -8,27 +8,45 @@ namespace AgValoniaGPS.Services.Gps;
 public sealed class RearGpsReceiverService : IRearGpsReceiverService
 {
     private const int RearGpsPort = 10000;
+    private const double RecentThresholdSeconds = 2.0;
 
     private readonly byte[] _receiveBuffer = new byte[4096];
 
     private Socket? _socket;
     private EndPoint _remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
     private bool _isRunning;
-    private VehicleState _rearState;
 
+    private VehicleState _lastState;
     private DateTime _lastConsoleLogUtc = DateTime.MinValue;
 
-    public RearGpsReceiverService()
+    public event EventHandler<VehicleState>? RearGpsUpdated;
+
+    public VehicleState LastState => _lastState;
+
+    public double Latitude => _lastState.Latitude;
+    public double Longitude => _lastState.Longitude;
+    public double Speed => _lastState.Speed;
+    public double Heading => _lastState.Heading;
+    public int FixQuality => _lastState.FixQuality;
+    public int Satellites => _lastState.Satellites;
+
+    public DateTime LastUpdateUtc { get; private set; }
+
+    public double AgeSeconds
     {
+        get
+        {
+            if (LastUpdateUtc == default)
+            {
+                return double.PositiveInfinity;
+            }
+
+            return (DateTime.UtcNow - LastUpdateUtc).TotalSeconds;
+        }
     }
 
-    public double Latitude => _rearState.Latitude;
-    public double Longitude => _rearState.Longitude;
-    public double Speed => _rearState.Speed;
-    public double Heading => _rearState.Heading;
-    public int FixQuality => _rearState.FixQuality;
-    public int Satellites => _rearState.Satellites;
-    public DateTime LastUpdateUtc { get; private set; }
+    public bool HasFix => FixQuality > 0 && Satellites > 0;
+    public bool IsRecent => AgeSeconds <= RecentThresholdSeconds;
 
     public void Start()
     {
@@ -119,19 +137,40 @@ public sealed class RearGpsReceiverService : IRearGpsReceiverService
             return;
         }
 
-        if (bytesReceived > 0 && _receiveBuffer[0] == (byte)'$')
+        try
         {
-            var packet = new byte[bytesReceived];
-            Buffer.BlockCopy(_receiveBuffer, 0, packet, 0, bytesReceived);
+            ProcessPacket(bytesReceived);
+        }
+        finally
+        {
+            BeginReceive();
+        }
+    }
 
-            NmeaParserServiceFast.ParseIntoState(packet, ref _rearState);
-
-            LastUpdateUtc = DateTime.UtcNow;
-
-            LogRearGpsThrottled();
+    private void ProcessPacket(int bytesReceived)
+    {
+        if (bytesReceived <= 0)
+        {
+            return;
         }
 
-        BeginReceive();
+        if (_receiveBuffer[0] != (byte)'$')
+        {
+            return;
+        }
+
+        var packet = new byte[bytesReceived];
+        Buffer.BlockCopy(_receiveBuffer, 0, packet, 0, bytesReceived);
+
+        var state = _lastState;
+        NmeaParserServiceFast.ParseIntoState(packet, ref state);
+
+        _lastState = state;
+        LastUpdateUtc = DateTime.UtcNow;
+
+        RearGpsUpdated?.Invoke(this, _lastState);
+
+        LogRearGpsThrottled();
     }
 
     private void LogRearGpsThrottled()
@@ -147,7 +186,8 @@ public sealed class RearGpsReceiverService : IRearGpsReceiverService
         Console.WriteLine(
             $"Rear GPS: lat={Latitude:F8}, lon={Longitude:F8}, " +
             $"speed={Speed * 3.6:F1} km/h, heading={Heading:F1}, " +
-            $"fix={FixQuality}, sats={Satellites}");
+            $"fix={FixQuality}, sats={Satellites}, " +
+            $"recent={IsRecent}, age={AgeSeconds:F1}s");
     }
 
     public void Dispose()
