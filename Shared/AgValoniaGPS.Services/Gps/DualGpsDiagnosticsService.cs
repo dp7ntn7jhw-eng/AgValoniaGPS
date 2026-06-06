@@ -11,6 +11,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
     private readonly IGuidanceGeometryService _geometryService;
     private readonly IRearAxleGuidanceCommandService _rearCommandService;
     private readonly IRearAxleCommandPublisherService _rearCommandPublisherService;
+    private readonly IRearAxleStatusReceiverService _rearStatusReceiverService;
     private readonly IGpsPipelineService _gpsPipelineService;
     private readonly ApplicationState _appState;
     private readonly System.Timers.Timer _timer;
@@ -21,6 +22,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         IGuidanceGeometryService geometryService,
         IRearAxleGuidanceCommandService rearCommandService,
         IRearAxleCommandPublisherService rearCommandPublisherService,
+        IRearAxleStatusReceiverService rearStatusReceiverService,
         IGpsPipelineService gpsPipelineService,
         ApplicationState appState)
     {
@@ -29,6 +31,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         _geometryService = geometryService;
         _rearCommandService = rearCommandService;
         _rearCommandPublisherService = rearCommandPublisherService;
+        _rearStatusReceiverService = rearStatusReceiverService;
         _gpsPipelineService = gpsPipelineService;
         _appState = appState;
 
@@ -85,6 +88,18 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
         var rearCommand = _rearCommandService.ComputeCommand(rearDiagnostic);
         _rearCommandPublisherService.Publish(rearDiagnostic, rearCommand);
 
+        var rearStatus = _rearStatusReceiverService.LastStatus;
+        bool rearStatusRecent = _rearStatusReceiverService.IsRecent;
+
+        string rearStatusText = rearStatus == null
+            ? "stm32Status=n/a"
+            : $"stm32Recent={rearStatusRecent}, " +
+              $"stm32Accepted={rearStatus.Accepted}, " +
+              $"stm32FeedbackAdc={rearStatus.FeedbackAdc}, " +
+              $"stm32TargetAdc={rearStatus.TargetAdc}, " +
+              $"stm32Pwm={rearStatus.Pwm}, " +
+              $"stm32Timeout={rearStatus.Timeout}";
+
         Console.WriteLine(
             $"Dual GPS: frontFix={frontFix}, rearFix={rearFix}, rearRecent={rearRecent}, " +
             $"dist={rearDiagnostic.RearDistanceToFrontMeters:F2}m, " +
@@ -93,6 +108,7 @@ public sealed class DualGpsDiagnosticsService : IDualGpsDiagnosticsService
             $"rearValid={rearDiagnostic.IsValid}, " +
             $"rearCmdValid={rearCommand.IsCommandValid}, " +
             $"rearSteerCmd={rearCommand.TargetSteerAngleDegrees:F2}deg, " +
+            $"{rearStatusText}, " +
             $"track={rearDiagnostic.ActiveTrackName}, " +
             $"reason={rearCommand.ReasonIfInvalid}, " +
             $"front=({frontLat:F8},{frontLon:F8}), " +
